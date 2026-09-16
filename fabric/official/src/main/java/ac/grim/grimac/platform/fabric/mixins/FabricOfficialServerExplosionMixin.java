@@ -28,9 +28,9 @@ public abstract class FabricOfficialServerExplosionMixin {
     private static final int ELYTRA_LAUNCHER_GRACE_TICKS = 40;
 
     @Redirect(method = "hurtEntities", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/Entity;push(Lnet/minecraft/world/phys/Vec3;)V"))
+            target = "Lnet/minecraft/world/entity/Entity;pushFromExplosion(Lnet/minecraft/world/phys/Vec3;)V"))
     private void grimac$onExplosionPush(Entity entity, Vec3 knockback) {
-        entity.push(knockback);
+        entity.pushFromExplosion(knockback);
         if (entity instanceof Player player) {
             player.applyPostImpulseGraceTime(ELYTRA_LAUNCHER_GRACE_TICKS);
         }

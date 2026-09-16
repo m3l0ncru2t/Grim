@@ -34,7 +34,12 @@ public class FastBreak extends Check implements BlockBreakListener, PreViaPacket
 
     // For some reason these states flag and I don't know why.
     // Better to just exempt to not annoy legit players.
-    private static final Set<StateType> EXEMPT_STATES = Set.of();
+    // SNOW/SNOW_BLOCK (0.1/0.2 hardness) break in under a tick with any tool - chaining several
+    // in a row (walking/digging through a snow biome) racks up blockBreakBalance faster than the
+    // "close enough" branch (diff < 25) can offset it, since predictedTime still floors at one tick
+    // (50ms) per break. Confirmed on live server: instant mass-disconnect ("spamming invalid packets")
+    // the moment a player starts breaking through snow (MintMC, 2026-09-17).
+    private static final Set<StateType> EXEMPT_STATES = Set.of(StateTypes.SNOW, StateTypes.SNOW_BLOCK);
     private final boolean clientOlderThanServer = PacketEvents.getAPI().getServerManager().getVersion().getProtocolVersion() > player.getClientVersion().getProtocolVersion();
 
     public FastBreak(GrimPlayer player) {

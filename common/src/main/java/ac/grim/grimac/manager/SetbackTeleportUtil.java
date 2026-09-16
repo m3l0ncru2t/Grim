@@ -324,7 +324,18 @@ public class SetbackTeleportUtil extends GrimProcessor implements PostPrediction
             boolean correctRotations = (yaw == teleportPos.getYaw() || teleportPos.isRelativeYaw())
                     && (pitch == teleportPos.getPitch() || teleportPos.isRelativePitch());
 
-            if (player.lastTransactionReceived.get() == teleportPos.getTransaction() && Math.abs(clamped.getX() - x) <= threshold && closeEnoughY && Math.abs(clamped.getZ() - z) <= threshold && correctRotations) {
+            // TEMP FIX (2026-09-16, mintutils 26.3 investigation) - sendSetback() calls
+            // player.sendTransaction() twice (once to mint the teleport's transaction number, then
+            // again right after the teleport packet is sent). The client's transaction ack is
+            // cumulative - acking a later transaction implies everything before it was already
+            // processed - so by the time any movement packet arrives, lastTransactionReceived has
+            // already passed the teleport's recorded transaction by at least 1. The old strict `==`
+            // check could therefore never match, even with pixel-exact position/rotation, so every
+            // setback got treated as "ignored", flagged BadPacketsN, and immediately resent -
+            // forever. `>=` is the logically correct comparison for a monotonic ack counter.
+            boolean transactionMatch = player.lastTransactionReceived.get() >= teleportPos.getTransaction();
+
+            if (transactionMatch && Math.abs(clamped.getX() - x) <= threshold && closeEnoughY && Math.abs(clamped.getZ() - z) <= threshold && correctRotations) {
                 pendingTeleports.poll();
                 hasAcceptedSpawnTeleport = true;
                 blockOffsets = false;

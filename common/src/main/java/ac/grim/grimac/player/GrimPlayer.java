@@ -835,6 +835,26 @@ public class GrimPlayer implements GrimUser {
         if (chestPlate.getType() == ItemTypes.ELYTRA && chestPlate.getDamageValue() < chestPlate.getMaxDamage() - 1)
             return true;
 
+        // TEMP FIX (2026-08-02, mintutils investigation, part 6) - inventory.getChestplate() is only
+        // ever updated via a transaction-gated addRealTimeTask in CompensatedInventory (see its
+        // onPacketSend SET_SLOT/WINDOW_ITEMS handling), the same no-timeout mechanism already found
+        // to strand isGliding/isFlying stuck. Confirmed live via diagnostic logging: after a plugin
+        // restores a player's real inventory (elytra included) server-side, Grim's packet-tracked
+        // chestplate slot got stuck showing no elytra, permanently rejecting every subsequent glide
+        // attempt as "ghost elytra" cheating (settled=true, onGround=false, canGlide=false) until a
+        // full reconnect resynced everything from scratch. Fall back to the real platform inventory -
+        // Grim already trusts this exact source as authoritative elsewhere (CompensatedInventory's own
+        // !isPacketInventoryActive fallback) - before concluding this is a cheat. A genuine client only
+        // ever sends this packet if its own (server-synced) local inventory shows an elytra, so this
+        // can't be gamed by an actual cheater; it just stops trusting a potentially stale copy.
+        if (platformPlayer != null) {
+            ItemStack realChestPlate = platformPlayer.getInventory().getChestplate();
+            if (realChestPlate != null && realChestPlate.getType() == ItemTypes.ELYTRA
+                    && realChestPlate.getDamageValue() < realChestPlate.getMaxDamage() - 1) {
+                return true;
+            }
+        }
+
         // if the server or client doesn't support glider components return false
         if (getClientVersion().isOlderThan(ClientVersion.V_1_21_2)
                 || PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_21_2)) return false;

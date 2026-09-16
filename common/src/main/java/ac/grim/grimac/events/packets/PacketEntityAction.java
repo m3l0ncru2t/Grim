@@ -50,7 +50,26 @@ public class PacketEntityAction extends PacketListenerAbstract {
                     if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_9))
                         return;
 
-                    if (player.onGround || player.lastOnGround) {
+                    // TEMP FIX (2026-08-02, mintutils investigation, part 4) - onGround/lastOnGround
+                    // only become trustworthy once any teleport the player is mid-confirming has
+                    // actually settled - see SetbackTeleportUtil.shouldBlockMovement(), Grim's own
+                    // general-purpose "are we in a desync/unconfirmed-teleport state" signal (covers
+                    // both the post-respawn hasAcceptedSpawnTeleport case AND an ordinary teleport
+                    // still awaiting its position/transaction match via requiredSetBack). A minigame's
+                    // own restore-to-original-position teleport - fired for an eliminated player after
+                    // their own respawn, OR for the match winner who never respawned at all but still
+                    // gets teleported back once the match ends - can leave onGround stuck stale from a
+                    // completely different, earlier position while that confirmation is still pending.
+                    // Rejecting a genuine elytra deploy on stale ground state here was confirmed live
+                    // for both cases: the player is stuck unable to glide, repeatedly forced back down
+                    // by the resync below, exactly matching "stuck in elytra on the ground" / "pulled
+                    // to the ground like I'm fly hacking." Don't trust onGround for this specific
+                    // rejection until any pending teleport has actually settled - this doesn't weaken
+                    // the check for any already-settled player, ghost-elytra fly-hacking is still
+                    // caught exactly as before.
+                    boolean settled = !player.getSetbackTeleportUtil().shouldBlockMovement();
+
+                    if (settled && (player.onGround || player.lastOnGround)) {
                         player.getSetbackTeleportUtil().executeNonSimulatingForceResync();
                         player.resyncGlidingState();
                         event.setCancelled(true);

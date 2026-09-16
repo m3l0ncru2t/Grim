@@ -29,9 +29,9 @@ dependencies {
     minecraft("com.mojang:minecraft:$minecraft_version")
 
     include(project(":fabric:shared"))
-    include(project(":fabric:intermediary"))
     include(project(":fabric:official"))
     include(libs.packetevents.fabric)
+    include("org.xerial:sqlite-jdbc:3.53.2.1")
 }
 
 publishing.publications.create<MavenPublication>("maven") {

@@ -10,7 +10,9 @@
         "FabricOfficialPistonBaseBlockMixin",
         "FabricOfficialServerMixin",
         "FabricOfficialServerPlayerMixin",
-        "FabricOfficialEntityMixin"
+        "FabricOfficialEntityMixin",
+        "FabricOfficialServerExplosionMixin",
+        "FabricOfficialServerGamePacketListenerMixin"
     ],
     "injectors": {
         "defaultRequire": 1

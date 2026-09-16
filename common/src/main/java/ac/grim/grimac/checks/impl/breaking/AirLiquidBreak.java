@@ -39,17 +39,23 @@ public class AirLiquidBreak extends Check implements BlockBreakListener {
 
         final StateType block = blockBreak.block.getType();
 
-        // Fixes false from breaking kelp underwater
+        // Fixes false from breaking kelp underwater (originally), generalized to cover any
+        // near-instant-break block (e.g. snow, hardness 0.1) reverting to air (2026-09-17).
         // The client sends two start digging packets to the server both in the same tick. AirLiquidBreak gets called twice, doesn't false the first time, but falses the second
-        // One ends up breaking the kelp, the other ends up doing nothing besides falsing this check because we think they're trying to mine water
-        // I am explicitly making this patch as narrow and specific as possible to potentially discover other blocks that exhibit similar behaviour
+        // One ends up breaking the kelp/snow, the other ends up doing nothing besides falsing this check because we think they're trying to mine water/air
+        // Confirmed on live server: instant-break blocks (snow) flagged AirLiquidBreak on every
+        // FINISHED_DIGGING (never START_DIGGING) - by the time FINISHED_DIGGING is processed, the
+        // break has already completed and the world genuinely reads air, since a hardness<1.0 block
+        // can finish within the same tick it started. Widened from the original hardness==0/
+        // blastResistance==0/WATER-only kelp case to hardness<1.0 (covers snow 0.1, snow_block 0.2,
+        // powder_snow 0.25) and block.isAir() (covers snow/dirt-like blocks that reveal nothing,
+        // vs kelp which reveals the water it was floating in).
         int newTick = GrimAPI.INSTANCE.getTickManager().currentTick;
         if (lastTick == newTick
                 && lastBreakLoc.equals(blockBreak.position)
                 && !didLastFlag
-                && lastBlockType.getHardness() == 0.0F
-                && lastBlockType.getBlastResistance() == 0.0F
-                && block == StateTypes.WATER
+                && lastBlockType.getHardness() >= 0.0F && lastBlockType.getHardness() < 1.0F
+                && (block == StateTypes.WATER || block.isAir())
         ) return;
         lastTick = newTick;
         lastBreakLoc = blockBreak.position;

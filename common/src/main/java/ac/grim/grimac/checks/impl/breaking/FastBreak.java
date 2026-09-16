@@ -39,7 +39,7 @@ public class FastBreak extends Check implements BlockBreakListener, PreViaPacket
     // "close enough" branch (diff < 25) can offset it, since predictedTime still floors at one tick
     // (50ms) per break. Confirmed on live server: instant mass-disconnect ("spamming invalid packets")
     // the moment a player starts breaking through snow (MintMC, 2026-09-17).
-    private static final Set<StateType> EXEMPT_STATES = Set.of(StateTypes.SNOW, StateTypes.SNOW_BLOCK);
+    private static final Set<StateType> EXEMPT_STATES = Set.of(StateTypes.SNOW, StateTypes.SNOW_BLOCK, StateTypes.POWDER_SNOW);
     private final boolean clientOlderThanServer = PacketEvents.getAPI().getServerManager().getVersion().getProtocolVersion() > player.getClientVersion().getProtocolVersion();
 
     public FastBreak(GrimPlayer player) {

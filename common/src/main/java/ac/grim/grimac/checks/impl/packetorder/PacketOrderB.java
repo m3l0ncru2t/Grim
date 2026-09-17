@@ -40,6 +40,21 @@ public class PacketOrderB extends Check implements PreViaPacketReceiveListener {
             return;
         }
 
+        // MINTMC FIX (2026-09-17): the REAL cause of "can attack once after joining, then never
+        // again" (not the ENTITY_ACTION/sprint theory below, which was a real but much smaller
+        // contributor). WrapperPlayClientAnimation/PacketType.ANIMATION is @ApiStatus.Obsolete as
+        // of 26.3 - Mojang replaced ServerboundSwingPacket with ServerboundPunchPacket
+        // (WrapperPlayClientPunch / PacketType.PUNCH), which carries no hand field at all. A 26.3+
+        // client never sends ANIMATION for a swing anymore, so sentAnimationSinceLastAttack was
+        // never being set true again after its initial (join-time) default - every attack after
+        // the very first one on a fresh connection got flagged and cancelled. PUNCH has no hand
+        // data to check, so any PUNCH packet is treated as a main-hand swing.
+        if (event.getPacketType() == PacketType.Play.Client.PUNCH) {
+            sentAnimationSinceLastAttack = sentAnimation = true;
+            sentAttack = sentSlotSwitch = false;
+            return;
+        }
+
         if (event.getPacketType() == PacketType.Play.Client.INTERACT_ENTITY) {
             WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
             if (packet.getAction() == WrapperPlayClientInteractEntity.InteractAction.ATTACK) {

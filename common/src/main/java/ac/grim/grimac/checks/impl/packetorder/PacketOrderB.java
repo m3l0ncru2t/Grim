@@ -92,6 +92,20 @@ public class PacketOrderB extends Check implements PreViaPacketReceiveListener {
             return; // do not disturb sentAttack/sentAnimation state
         }
 
+        // MINTMC FIX (2026-09-17): the actual dominant false-positive source, bigger than the
+        // ENTITY_ACTION/sprint case above. isUpdate() covers PLAYER_FLYING/PLAYER_POSITION/
+        // PLAYER_ROTATION/PLAYER_POSITION_AND_ROTATION (movement, sent every tick regardless of
+        // combat) plus CLIENT_TICK_END and transaction acks (PONG/WINDOW_CONFIRMATION) - none of
+        // these were exempted, only isAsync()'s much narrower set (KEEP_ALIVE/CHUNK_BATCH_ACK/
+        // RESOURCE_PACK_STATUS) was. Any player moving or looking around while attacking (i.e.
+        // normal combat) could easily have a routine position/rotation packet land between the
+        // attack and its paired swing packet, falsely flagging and cancelling a perfectly legit
+        // attack. Reported live: still-cancelled attacks even after the PUNCH-recognition and
+        // ENTITY_ACTION fixes.
+        if (isUpdate(event.getPacketType())) {
+            return; // do not disturb sentAttack/sentAnimation state
+        }
+
         if (!isAsync(event.getPacketType())) {
             if (sentAttack && is1_9) {
                 flag(V.write(verbose()).bool(false));

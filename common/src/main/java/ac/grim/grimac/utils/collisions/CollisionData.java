@@ -285,7 +285,7 @@ public enum CollisionData implements CollisionFactory {
     // (confirmed via Direction.getClockWise() convention: NORTH->EAST->SOUTH->WEST->NORTH, so
     // (x,z) -> (16-z, x) for one clockwise step); age=1 not yet measured, reuses age=0's shape as a
     // closer approximation than either previous guess.
-    SHELF_MUSHROOM((player, version, data, x, y, z) -> getShelfMushroom(data.getFacing()), StateTypes.SHELF_MUSHROOM),
+    SHELF_MUSHROOM((player, version, data, x, y, z) -> getShelfMushroom(data.getFacing(), data.getAge()), StateTypes.SHELF_MUSHROOM),
 
     KELP(new HexCollisionBox(0.0D, 0.0D, 0.0D, 16.0D, 9.0D, 16.0D), StateTypes.KELP),
     // Kelp block is a full block, so it by default is correct
@@ -1170,18 +1170,29 @@ public enum CollisionData implements CollisionFactory {
         return NoCollisionBox.INSTANCE;
     }
 
-    // MINTMC (2026-09-17): base shape measured for facing=SOUTH via mintutils' /blockshape debug
-    // command (real BlockState.getShape() off the live server). Rotated for the other 3 cardinal
-    // facings using the standard clockwise Y-rotation (x,z) -> (16-z, x) (NORTH->EAST->SOUTH->WEST->
-    // NORTH); SOUTH itself needs zero rotations, WEST needs one step, NORTH two, EAST three.
-    private static final double[][] SHELF_MUSHROOM_SOUTH_BOXES = {
+    // MINTMC (2026-09-17): base shapes measured for facing=SOUTH via mintutils' /blockshape debug
+    // command (real BlockState.getShape() off the live server), one per AGE value (vanilla's own
+    // AGE property is AGE_1, i.e. only 0 or 1 - confirmed via ShelfMushroomBlock's static init using
+    // IntStream.rangeClosed(0, 1) for its SHAPES list). Rotated for the other 3 cardinal facings
+    // using the standard clockwise Y-rotation (x,z) -> (16-z, x) (NORTH->EAST->SOUTH->WEST->NORTH);
+    // SOUTH itself needs zero rotations, WEST needs one step, NORTH two, EAST three.
+    private static final double[][] SHELF_MUSHROOM_SOUTH_BOXES_AGE_0 = {
             {5.0D, 8.0D, 0.0D, 11.0D, 11.0D, 4.0D},
             {3.0D, 9.0D, 0.0D, 5.0D, 11.0D, 7.0D},
             {5.0D, 9.0D, 4.0D, 13.0D, 11.0D, 7.0D},
             {11.0D, 9.0D, 0.0D, 13.0D, 11.0D, 4.0D},
     };
 
-    private static CollisionBox getShelfMushroom(BlockFace facing) {
+    private static final double[][] SHELF_MUSHROOM_SOUTH_BOXES_AGE_1 = {
+            {4.0D, 6.0D, 0.0D, 12.0D, 11.0D, 6.0D},
+            {1.0D, 8.0D, 0.0D, 4.0D, 11.0D, 10.0D},
+            {4.0D, 8.0D, 6.0D, 15.0D, 11.0D, 10.0D},
+            {12.0D, 8.0D, 0.0D, 15.0D, 11.0D, 6.0D},
+    };
+
+    private static CollisionBox getShelfMushroom(BlockFace facing, int age) {
+        double[][] southBoxes = age >= 1 ? SHELF_MUSHROOM_SOUTH_BOXES_AGE_1 : SHELF_MUSHROOM_SOUTH_BOXES_AGE_0;
+
         int steps = switch (facing) {
             case SOUTH -> 0;
             case WEST -> 1;
@@ -1190,10 +1201,10 @@ public enum CollisionData implements CollisionFactory {
             default -> 0;
         };
 
-        HexCollisionBox[] boxes = new HexCollisionBox[SHELF_MUSHROOM_SOUTH_BOXES.length];
-        for (int i = 0; i < SHELF_MUSHROOM_SOUTH_BOXES.length; i++) {
-            double minX = SHELF_MUSHROOM_SOUTH_BOXES[i][0], minY = SHELF_MUSHROOM_SOUTH_BOXES[i][1], minZ = SHELF_MUSHROOM_SOUTH_BOXES[i][2];
-            double maxX = SHELF_MUSHROOM_SOUTH_BOXES[i][3], maxY = SHELF_MUSHROOM_SOUTH_BOXES[i][4], maxZ = SHELF_MUSHROOM_SOUTH_BOXES[i][5];
+        HexCollisionBox[] boxes = new HexCollisionBox[southBoxes.length];
+        for (int i = 0; i < southBoxes.length; i++) {
+            double minX = southBoxes[i][0], minY = southBoxes[i][1], minZ = southBoxes[i][2];
+            double maxX = southBoxes[i][3], maxY = southBoxes[i][4], maxZ = southBoxes[i][5];
 
             for (int s = 0; s < steps; s++) {
                 // (x, z) -> (16 - z, x), applied per-corner so min/max stay correct after rotation

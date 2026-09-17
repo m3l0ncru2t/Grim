@@ -273,7 +273,15 @@ public enum CollisionData implements CollisionFactory {
             StateTypes.SMALL_DRIPLEAF, StateTypes.END_PORTAL, StateTypes.LEVER, StateTypes.PUMPKIN_STEM, StateTypes.MELON_STEM,
             StateTypes.ATTACHED_MELON_STEM, StateTypes.ATTACHED_PUMPKIN_STEM, StateTypes.BEETROOTS, StateTypes.POTATOES,
             StateTypes.WHEAT, StateTypes.CARROTS, StateTypes.NETHER_WART, StateTypes.MOVING_PISTON, StateTypes.AIR, StateTypes.CAVE_AIR,
-            StateTypes.VOID_AIR, StateTypes.LIGHT, StateTypes.WATER, StateTypes.BUBBLE_COLUMN, StateTypes.FIRE, StateTypes.SOUL_FIRE),
+            StateTypes.VOID_AIR, StateTypes.LIGHT, StateTypes.WATER, StateTypes.BUBBLE_COLUMN, StateTypes.FIRE, StateTypes.SOUL_FIRE,
+            // MINTMC FIX (2026-09-17): new in 26.3. isSolid(true) in StateTypes (material=PLANT), so
+            // getData() would otherwise fall through to DEFAULT (a full 1x1x1 solid cube) since it's
+            // not listed here - despite isBlocking(false)/hardness(0), the same "thin decorative
+            // wall-growth" shape as VINE/HANGING_ROOTS above, which are already NO_COLLISION. Without
+            // this, the server treated it as a full solid block while the client rendered a small
+            // decoration, causing a ghost-block mismatch -> forced setback -> the player.getStuck bug
+            // ("can't move") on every shelf mushroom placed after the 26.3 update.
+            StateTypes.SHELF_MUSHROOM),
 
     KELP(new HexCollisionBox(0.0D, 0.0D, 0.0D, 16.0D, 9.0D, 16.0D), StateTypes.KELP),
     // Kelp block is a full block, so it by default is correct

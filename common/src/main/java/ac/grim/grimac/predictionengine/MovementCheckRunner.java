@@ -221,6 +221,32 @@ public class MovementCheckRunner extends GrimProcessor {
 
                 Vector3dm cutTo = VectorUtils.cutBoxToVector(player.x, player.y, player.z, interTruePositions);
 
+                // MINTMC DIAG (2026-09-17): temporary, investigating the "stuck after standing up from
+                // a cushion" bug (see project_grim_26.3_new_content_gaps memory). Comparing the
+                // client-interpolated vehicle box (interTruePositions, used below to derive
+                // player.lastX/Y/Z with zero sanity check) against the server-authoritative tracked
+                // position (serverPositionsMap, the same source GrimPlayer.handleDismountVehicle
+                // already trusts for resyncing) and the player's real position, to see how far apart
+                // they actually are at the exact dismount-race instant for an untracked entity type
+                // like CUSHION. Remove once the mechanism is confirmed.
+                {
+                    int ridingId = player.compensatedEntities.getPacketEntityID(riding);
+                    ac.grim.grimac.utils.data.TrackerData serverTracked = player.compensatedEntities.serverPositionsMap.get(ridingId);
+                    ac.grim.grimac.utils.anticheat.LogUtil.warn(String.format(
+                            "[MINTMC-DIAG dismount-anchor] player=%s ridingType=%s ridingId=%d "
+                                    + "vehicleBox=[%.2f,%.2f,%.2f -> %.2f,%.2f,%.2f] shrunkBox=[%.2f,%.2f,%.2f -> %.2f,%.2f,%.2f] "
+                                    + "cutTo=[%.2f,%.2f,%.2f] playerReal=[%.2f,%.2f,%.2f] serverTracked=%s",
+                            player.user.getName(), riding.getType().getName(), ridingId,
+                            riding.getPossibleCollisionBoxes().minX, riding.getPossibleCollisionBoxes().minY, riding.getPossibleCollisionBoxes().minZ,
+                            riding.getPossibleCollisionBoxes().maxX, riding.getPossibleCollisionBoxes().maxY, riding.getPossibleCollisionBoxes().maxZ,
+                            interTruePositions.minX, interTruePositions.minY, interTruePositions.minZ,
+                            interTruePositions.maxX, interTruePositions.maxY, interTruePositions.maxZ,
+                            cutTo.getX(), cutTo.getY(), cutTo.getZ(),
+                            player.x, player.y, player.z,
+                            serverTracked == null ? "null" : String.format("[%.2f,%.2f,%.2f]", serverTracked.getX(), serverTracked.getY(), serverTracked.getZ())
+                    ));
+                }
+
                 // Now we need to simulate a tick starting at the most optimal position
                 // The start position is never sent, so we assume the most optimal start position
                 //

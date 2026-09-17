@@ -273,15 +273,19 @@ public enum CollisionData implements CollisionFactory {
             StateTypes.SMALL_DRIPLEAF, StateTypes.END_PORTAL, StateTypes.LEVER, StateTypes.PUMPKIN_STEM, StateTypes.MELON_STEM,
             StateTypes.ATTACHED_MELON_STEM, StateTypes.ATTACHED_PUMPKIN_STEM, StateTypes.BEETROOTS, StateTypes.POTATOES,
             StateTypes.WHEAT, StateTypes.CARROTS, StateTypes.NETHER_WART, StateTypes.MOVING_PISTON, StateTypes.AIR, StateTypes.CAVE_AIR,
-            StateTypes.VOID_AIR, StateTypes.LIGHT, StateTypes.WATER, StateTypes.BUBBLE_COLUMN, StateTypes.FIRE, StateTypes.SOUL_FIRE,
-            // MINTMC FIX (2026-09-17): new in 26.3. isSolid(true) in StateTypes (material=PLANT), so
-            // getData() would otherwise fall through to DEFAULT (a full 1x1x1 solid cube) since it's
-            // not listed here - despite isBlocking(false)/hardness(0), the same "thin decorative
-            // wall-growth" shape as VINE/HANGING_ROOTS above, which are already NO_COLLISION. Without
-            // this, the server treated it as a full solid block while the client rendered a small
-            // decoration, causing a ghost-block mismatch -> forced setback -> the player.getStuck bug
-            // ("can't move") on every shelf mushroom placed after the 26.3 update.
-            StateTypes.SHELF_MUSHROOM),
+            StateTypes.VOID_AIR, StateTypes.LIGHT, StateTypes.WATER, StateTypes.BUBBLE_COLUMN, StateTypes.FIRE, StateTypes.SOUL_FIRE),
+
+    // MINTMC FIX (2026-09-17), corrected: new in 26.3. First attempt (2026-09-16) treated this as
+    // NO_COLLISION by analogy to VINE/HANGING_ROOTS - wrong in the OTHER direction from the original
+    // bug (full-cube DEFAULT fallback, since isSolid(true) with no CollisionData entry). Got the real
+    // shape via an in-game debug command (mintutils /blockshape, reading BlockState.getShape()/
+    // getCollisionShape() directly off the live server) for age=0/facing=south: 4 small boxes
+    // clustered around x=[3,13] z=[0,7] y=[8,11] (in 1/16ths) - a genuine small fungal-shelf shape,
+    // not full-cube and not empty. Rotated 90 degrees per cardinal direction for the other 3 facings
+    // (confirmed via Direction.getClockWise() convention: NORTH->EAST->SOUTH->WEST->NORTH, so
+    // (x,z) -> (16-z, x) for one clockwise step); age=1 not yet measured, reuses age=0's shape as a
+    // closer approximation than either previous guess.
+    SHELF_MUSHROOM((player, version, data, x, y, z) -> getShelfMushroom(data.getFacing()), StateTypes.SHELF_MUSHROOM),
 
     KELP(new HexCollisionBox(0.0D, 0.0D, 0.0D, 16.0D, 9.0D, 16.0D), StateTypes.KELP),
     // Kelp block is a full block, so it by default is correct
@@ -1164,6 +1168,47 @@ public enum CollisionData implements CollisionFactory {
                 }
         }
         return NoCollisionBox.INSTANCE;
+    }
+
+    // MINTMC (2026-09-17): base shape measured for facing=SOUTH via mintutils' /blockshape debug
+    // command (real BlockState.getShape() off the live server). Rotated for the other 3 cardinal
+    // facings using the standard clockwise Y-rotation (x,z) -> (16-z, x) (NORTH->EAST->SOUTH->WEST->
+    // NORTH); SOUTH itself needs zero rotations, WEST needs one step, NORTH two, EAST three.
+    private static final double[][] SHELF_MUSHROOM_SOUTH_BOXES = {
+            {5.0D, 8.0D, 0.0D, 11.0D, 11.0D, 4.0D},
+            {3.0D, 9.0D, 0.0D, 5.0D, 11.0D, 7.0D},
+            {5.0D, 9.0D, 4.0D, 13.0D, 11.0D, 7.0D},
+            {11.0D, 9.0D, 0.0D, 13.0D, 11.0D, 4.0D},
+    };
+
+    private static CollisionBox getShelfMushroom(BlockFace facing) {
+        int steps = switch (facing) {
+            case SOUTH -> 0;
+            case WEST -> 1;
+            case NORTH -> 2;
+            case EAST -> 3;
+            default -> 0;
+        };
+
+        HexCollisionBox[] boxes = new HexCollisionBox[SHELF_MUSHROOM_SOUTH_BOXES.length];
+        for (int i = 0; i < SHELF_MUSHROOM_SOUTH_BOXES.length; i++) {
+            double minX = SHELF_MUSHROOM_SOUTH_BOXES[i][0], minY = SHELF_MUSHROOM_SOUTH_BOXES[i][1], minZ = SHELF_MUSHROOM_SOUTH_BOXES[i][2];
+            double maxX = SHELF_MUSHROOM_SOUTH_BOXES[i][3], maxY = SHELF_MUSHROOM_SOUTH_BOXES[i][4], maxZ = SHELF_MUSHROOM_SOUTH_BOXES[i][5];
+
+            for (int s = 0; s < steps; s++) {
+                // (x, z) -> (16 - z, x), applied per-corner so min/max stay correct after rotation
+                double newMinX = 16.0D - maxZ, newMaxX = 16.0D - minZ;
+                double newMinZ = minX, newMaxZ = maxX;
+                minX = newMinX;
+                maxX = newMaxX;
+                minZ = newMinZ;
+                maxZ = newMaxZ;
+            }
+
+            boxes[i] = new HexCollisionBox(minX, minY, minZ, maxX, maxY, maxZ);
+        }
+
+        return new ComplexCollisionBox(boxes.length, boxes);
     }
 
     private static CollisionBox getEndRod(ClientVersion version, BlockFace face) {

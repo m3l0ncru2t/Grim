@@ -66,6 +66,17 @@ public class PacketOrderB extends Check implements PreViaPacketReceiveListener {
             return; // do not set sentAnimation to false
         }
 
+        // MINTMC FIX (2026-09-17): vanilla auto-cancels sprint the instant you land a hit, which
+        // sends an ENTITY_ACTION (stop-sprinting) packet as a normal side effect of attacking -
+        // it has nothing to do with the attack/animation ordering this check enforces. Without this
+        // exemption it fell into the generic reset below, and since it lands between the (legit)
+        // attack packet and its paired animation packet specifically when the attacker is sprinting,
+        // every sprint-attack got falsely flagged and cancelled - explains "can hit a squid (not
+        // sprinting) but not a pig/sheep/hostile (chasing = sprinting)".
+        if (event.getPacketType() == PacketType.Play.Client.ENTITY_ACTION) {
+            return; // do not disturb sentAttack/sentAnimation state
+        }
+
         if (!isAsync(event.getPacketType())) {
             if (sentAttack && is1_9) {
                 flag(V.write(verbose()).bool(false));

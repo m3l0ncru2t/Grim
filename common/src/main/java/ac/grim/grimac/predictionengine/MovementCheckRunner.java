@@ -432,6 +432,15 @@ public class MovementCheckRunner extends GrimProcessor {
             if (BlockTags.BEDS.contains(block.getType()) && Math.abs((y + 0.5625D) - player.lastY) <= player.getMovementThreshold() && player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_12)) {
                 player.uncertaintyHandler.isSteppingOnBouncyBlock = true;
             }
+            // MINTMC (2026-09-17): new in 26.3, confirmed genuinely bouncy (real
+            // "block.shelf_mushroom.bounce" sound event in the game's own sound registry, and user
+            // confirmed it behaves like a bed). 0.6875 is its measured real top surface height (see
+            // CollisionData.getShelfMushroom) - without this, Grim's tight movement tolerance stayed
+            // in effect while the player actually bounced, producing a Simulation mismatch on every
+            // landing that fed into the same "stuck" setback loop as the earlier shape bug.
+            if (block.getType() == StateTypes.SHELF_MUSHROOM && Math.abs((y + 0.6875D) - player.lastY) <= player.getMovementThreshold()) {
+                player.uncertaintyHandler.isSteppingOnBouncyBlock = true;
+            }
             if (BlockTags.ICE.contains(block.getType())) {
                 player.uncertaintyHandler.isSteppingOnIce = true;
             }

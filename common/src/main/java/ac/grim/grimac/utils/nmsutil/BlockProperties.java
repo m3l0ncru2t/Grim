@@ -316,6 +316,15 @@ public class BlockProperties {
             return player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_26_2) ? 0.75F : 0.66F;
         }
 
+        // MINTMC (2026-09-17): new in 26.3, confirmed genuinely bouncy - real
+        // "block.shelf_mushroom.bounce" sound event exists in the game's own sound registry, and
+        // user directly confirmed it bounces like a bed. Reusing the bed's 26.2+ restitution value
+        // since that's the closest real reference point available; not independently measured -
+        // revisit if the bounce height feels off in testing.
+        if (type == StateTypes.SHELF_MUSHROOM) {
+            return 0.75F;
+        }
+
         if (type == StateTypes.HONEY_BLOCK
                 && player.getClientVersion().isOlderThanOrEquals(ClientVersion.V_1_14_4)
                 && player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_8)) {

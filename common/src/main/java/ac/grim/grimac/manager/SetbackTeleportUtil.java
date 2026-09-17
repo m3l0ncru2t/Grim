@@ -408,7 +408,11 @@ public class SetbackTeleportUtil extends GrimProcessor implements PostPrediction
     public boolean shouldBlockMovement() {
         // This is required to ensure protection from servers teleporting from CREATIVE to SURVIVAL
         // I should likely refactor
-        return insideUnloadedChunk() || blockOffsets || (requiredSetBack != null && !requiredSetBack.isComplete());
+        // MINTMC FIX (2026-09-17): isStuckTooLong() stops this from blocking forever when the
+        // confirmation handshake's packet is lost/reordered - see SetBackData's own comment.
+        // requiredSetBack itself is left untouched (still incomplete) so a late-arriving
+        // confirmation is still honored normally if it eventually shows up.
+        return insideUnloadedChunk() || blockOffsets || (requiredSetBack != null && !requiredSetBack.isComplete() && !requiredSetBack.isStuckTooLong());
     }
 
     private boolean isPendingSetback() {

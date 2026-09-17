@@ -151,6 +151,14 @@ public final class BoundingBoxSize {
         } else if ((EntityTypes.isTypeInstanceOf(type, EntityTypes.ABSTRACT_PIGLIN) || type == EntityTypes.DROWNED || type == EntityTypes.HUSK || type == EntityTypes.ZOMBIE || type == EntityTypes.VILLAGER || type == EntityTypes.ZOMBIE_VILLAGER || type == EntityTypes.ZOMBIFIED_PIGLIN) &&
                         player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_26_1) && packetEntity.isBaby) {
             return 0.49f;
+        } else if (type == EntityTypes.CUSHION) {
+            // MINTMC (2026-09-17): new in 26.3, measured via mintutils /blockshape debug command
+            // (real vanilla EntityDimensions off the live server) - a flat, low sittable decoration,
+            // not remotely human-sized. Without this it fell through to the 0.6f generic default,
+            // which fed a badly wrong height into MovementCheckRunner's dismount-anchor shrink logic
+            // (interTruePositions.expandMax(0, -height, 0)) whenever a player stood up from one,
+            // plausibly corrupting the computed anchor box - the root of the cushion "stuck" bug.
+            return 1.0f;
         }
         return 0.6f;
     }
@@ -458,6 +466,9 @@ public final class BoundingBoxSize {
             return 1.0F;
         } else if ((EntityTypes.isTypeInstanceOf(type, EntityTypes.ABSTRACT_PIGLIN) || type == EntityTypes.DROWNED || type == EntityTypes.HUSK || type == EntityTypes.ZOMBIE || type == EntityTypes.ZOMBIE_VILLAGER || type == EntityTypes.VILLAGER || type == EntityTypes.ZOMBIFIED_PIGLIN) && player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_26_1) && packetEntity.isBaby) {
             return player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_26_2) ? 0.98f : 0.99f;
+        } else if (type == EntityTypes.CUSHION) {
+            // MINTMC (2026-09-17): see getWidthMinusBaby's CUSHION case - measured real value.
+            return 0.25f;
         }
         return 1.95f;
     }

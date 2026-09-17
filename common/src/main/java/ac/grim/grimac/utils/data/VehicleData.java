@@ -2,6 +2,7 @@ package ac.grim.grimac.utils.data;
 
 import ac.grim.grimac.utils.data.packetentity.JumpableEntity;
 import ac.grim.grimac.utils.enums.BoatEntityStatus;
+import com.github.retrooper.packetevents.protocol.entity.type.EntityType;
 import com.github.retrooper.packetevents.util.Vector3d;
 
 import java.util.ArrayDeque;
@@ -23,6 +24,10 @@ public class VehicleData {
     public float vehicleForward = 0f;
     public boolean lastDummy = false;
     public boolean wasVehicleSwitch = false;
+    // MINTMC (2026-09-17): temporary, tracking which vehicle type a wasVehicleSwitch came from so
+    // MovementCheckRunner's dismount handling can log which path CUSHION dismounts actually take.
+    // Remove alongside the other MINTMC-DIAG logging once the cushion-stuck bug is confirmed fixed.
+    public EntityType lastDismountedVehicleType = null;
     public float playerPitch = 0f;
     public float playerYaw = 0f;
     public final Deque<IntToObjectPair<JumpableEntity>> pendingJumps = new ArrayDeque<>();

@@ -261,6 +261,19 @@ public class MovementCheckRunner extends GrimProcessor {
 
                 player.boundingBox = GetBoundingBox.getCollisionBoxForPlayer(player, player.lastX, player.lastY, player.lastZ);
             } else {
+                // MINTMC DIAG (2026-09-17): riding is already null here for CUSHION dismounts (per
+                // earlier testing, the riding != null branch above never logs for cushion), meaning
+                // this "safe" fallback - not the box-shrink branch - is the actual path taken. Logging
+                // here to see whether the >3 sanity check or handleTeleport itself misbehaves for it.
+                if (player.vehicleData.lastDismountedVehicleType == EntityTypes.CUSHION) {
+                    double dist = new Vector3dm(player.lastX, player.lastY, player.lastZ).distance(new Vector3dm(player.x, player.y, player.z));
+                    ac.grim.grimac.utils.anticheat.LogUtil.warn(String.format(
+                            "[MINTMC-DIAG cushion-dismount-noride] player=%s dist=%.4f lastPos=[%.3f,%.3f,%.3f] realPos=[%.3f,%.3f,%.3f]",
+                            player.user.getName(), dist, player.lastX, player.lastY, player.lastZ, player.x, player.y, player.z
+                    ));
+                    player.vehicleData.lastDismountedVehicleType = null;
+                }
+
                 // Server always teleports the player when they eject anyways,
                 // so just let the player control where they eject within reason, they get set back anyways
                 if (new Vector3dm(player.lastX, player.lastY, player.lastZ).distance(new Vector3dm(player.x, player.y, player.z)) > 3) {

@@ -794,6 +794,7 @@ public class GrimPlayer implements GrimUser {
 
     public void handleDismountVehicle(PacketSendEvent event) {
         EntityType entityType = getVehicleType();
+        vehicleData.lastDismountedVehicleType = entityType; // MINTMC DIAG (2026-09-17), see VehicleData
 
         // Help prevent transaction split
         sendTransaction();

@@ -91,7 +91,37 @@ public class SetbackTeleportUtil extends GrimProcessor implements PostPrediction
             lastKnownGoodPosition = new SetbackPosWithVector(new Vector3d(player.x, player.y, player.z), afterTickFriction);
         }
 
-        if (requiredSetBack != null) requiredSetBack.tick();
+        if (requiredSetBack != null) {
+            requiredSetBack.tick();
+            // MINTMC FIX (2026-09-17): if the confirmation handshake packet is lost/reordered,
+            // force-accept the setback exactly like a real client confirmation would (mirrors
+            // checkTeleportQueue()'s match branch below) instead of merely letting movement
+            // resume with requiredSetBack still incomplete. Just bypassing shouldBlockMovement()
+            // left lastKnownGoodPosition frozen at the pre-teleport spot forever (it only
+            // refreshes above when isComplete() is true), so the next real movement looked like
+            // a teleport-sized jump, got flagged as BadPacketsN, triggered a fresh setback, and
+            // re-blocked - a block/unblock/flag loop that could rack up violations fast enough to
+            // get the player kicked anyway. Forcing completion here anchors Grim back to the
+            // server's last-sent (authoritative) teleport target, the only position we can trust
+            // without an actual client ack, and does it once since isComplete() stops
+            // isStuckTooLong() from re-firing.
+            if (requiredSetBack.isStuckTooLong()) {
+                forceCompleteStuckSetback();
+            }
+        }
+    }
+
+    // MINTMC FIX (2026-09-17): see the call site in onPredictionComplete() above for why this
+    // exists. Mirrors the real-acceptance branch of checkTeleportQueue() below - clears the
+    // pending queue, marks the setback complete, and re-anchors lastKnownGoodPosition to the
+    // teleport's target (the server's own last-sent position), not the client's stale
+    // player.x/y/z, since that position is precisely what the teleport was sent to correct.
+    private void forceCompleteStuckSetback() {
+        pendingTeleports.clear();
+        lastKnownGoodPosition = new SetbackPosWithVector(requiredSetBack.getTeleportData().getLocation(), new Vector3dm());
+        requiredSetBack.setComplete(true);
+        hasAcceptedSpawnTeleport = true;
+        blockOffsets = false;
     }
 
     public void executeForceResync() {
@@ -408,11 +438,10 @@ public class SetbackTeleportUtil extends GrimProcessor implements PostPrediction
     public boolean shouldBlockMovement() {
         // This is required to ensure protection from servers teleporting from CREATIVE to SURVIVAL
         // I should likely refactor
-        // MINTMC FIX (2026-09-17): isStuckTooLong() stops this from blocking forever when the
-        // confirmation handshake's packet is lost/reordered - see SetBackData's own comment.
-        // requiredSetBack itself is left untouched (still incomplete) so a late-arriving
-        // confirmation is still honored normally if it eventually shows up.
-        return insideUnloadedChunk() || blockOffsets || (requiredSetBack != null && !requiredSetBack.isComplete() && !requiredSetBack.isStuckTooLong());
+        // MINTMC FIX (2026-09-17): no change needed here - the timeout (see onPredictionComplete's
+        // handling of SetBackData.isStuckTooLong()) force-completes a stuck setback instead of
+        // bypassing this gate, so isComplete() alone is still the right check.
+        return insideUnloadedChunk() || blockOffsets || (requiredSetBack != null && !requiredSetBack.isComplete());
     }
 
     private boolean isPendingSetback() {

@@ -17,12 +17,17 @@ public class SetBackData {
     // TODO: Rethink when we block movements for teleports, perhaps after 10 ticks or 5 blocks?
     // MINTMC FIX (2026-09-17): implemented the timeout this TODO describes. The confirmation
     // handshake this setback waits on has no other fallback - if the handshake packet is ever
-    // lost/reordered (real network jitter, not just extreme lag), shouldBlockMovement() stayed
-    // true forever, since it only checks isComplete(). That blocked movement AND, via the same
-    // gate, the Reach combat check and entity-action packets - so a stuck player couldn't move,
-    // fight, or use items until a full reconnect reset their session. 100 ticks (5s) is generous
-    // enough that a real confirmation under normal latency/lag still lands well before the
-    // timeout fires, while capping the worst case at 5s instead of indefinite.
+    // lost/reordered (real network jitter, not just extreme lag), SetbackTeleportUtil's
+    // shouldBlockMovement() stayed true forever, since it only checks isComplete(). That blocked
+    // movement AND, via the same gate, the Reach combat check and entity-action packets - so a
+    // stuck player couldn't move, fight, or use items until a full reconnect reset their session.
+    // isStuckTooLong() (checked from SetbackTeleportUtil.onPredictionComplete) triggers a
+    // force-complete of this setback rather than just relaxing the movement gate - an earlier
+    // version of this fix did just bypass the gate, but leaving isComplete() false meant
+    // lastKnownGoodPosition never refreshed, so the next real movement looked like a fresh
+    // teleport-sized jump, got flagged, and re-triggered a new setback in a loop. 100 ticks (5s)
+    // is generous enough that a real confirmation under normal latency/lag still lands well
+    // before the timeout fires, while capping the worst case at 5s instead of indefinite.
     private static final int STUCK_TIMEOUT_TICKS = 100;
     private boolean isPlugin;
     private int ticksComplete = 0;
